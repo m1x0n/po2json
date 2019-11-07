@@ -22,4 +22,4 @@ compile:
 
 .PHONY: docker
 docker:
-	echo "Testing"
+	./vendor/bin/box docker
