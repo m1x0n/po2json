@@ -1,0 +1,4 @@
+{
+  "main": "po2json.php",
+  "output": "bin/po2json"
+}

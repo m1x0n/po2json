@@ -1,0 +1,25 @@
+{
+    "name": "m1x0n/po2json",
+    "description": "Convert PO-files to JSON-dictionary files.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "m1x0n",
+            "email": "mmorozovm@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Po2Json\\": "src/"
+        }
+    },
+    "require": {
+        "gettext/gettext": "^4.7",
+        "symfony/console": "^4.3"
+    },
+    "require-dev": {
+        "roave/security-advisories": "dev-master",
+        "bamarni/composer-bin-plugin": "^1.3"
+    }
+}
