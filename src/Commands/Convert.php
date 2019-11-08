@@ -6,6 +6,7 @@ namespace Po2Json\Commands;
 use DirectoryIterator;
 use Gettext\Translations;
 use InvalidArgumentException;
+use Po2Json\ValueObjects\Parameters;
 use SplFileInfo;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -23,16 +24,21 @@ class Convert extends Command
         $this->setHelp('Run po2json -h|--help for more info.');
 
         $this->addUsage('-i /home/po/ -o /home/json');
+        $this->addUsage('-i /home/po/ -o /home/json -a -l en');
         $this->addUsage('-h');
 
         $this->addOption('input', 'i', InputOption::VALUE_REQUIRED, 'Directory where po files are located.');
         $this->addOption('output', 'o', InputOption::VALUE_REQUIRED, 'Directory to put converted json files.');
+        $this->addOption('api', 'a', InputOption::VALUE_NONE, 'Return results in api format');
+        $this->addOption('lang', 'l', InputOption::VALUE_OPTIONAL, 'Specifies language for api format', Parameters::DEFAULT_LANG);
     }
 
     public function execute(InputInterface $input, OutputInterface $output)
     {
         $inputDirectory = $input->getOption('input');
         $outputDirectory = $input->getOption('output');
+        $isApiFormat = $input->getOption('api');
+        $lang = $input->getOption('lang');
 
         try {
             $this->validateInputDirectory($inputDirectory);
@@ -48,8 +54,15 @@ class Convert extends Command
             exit(1);
         }
 
+        $parameters = new Parameters(
+            $inputDirectory,
+            $outputDirectory,
+            $isApiFormat,
+            $lang
+        );
+
         try {
-            $this->convert($inputDirectory, $outputDirectory, $output);
+            $this->convert($parameters, $output);
         } catch(\Exception $exception) {
             $output->writeln(
                 sprintf('%s: %s', $this->getName(), $exception->getMessage())
@@ -82,10 +95,10 @@ class Convert extends Command
         }
     }
 
-    private function convert(string $inputDirectory, string $outputDirectory, OutputInterface $output): void
+    private function convert(Parameters $parameters, OutputInterface $output): void
     {
         // Load data from json dictionary file
-        $iterator = new DirectoryIterator($inputDirectory);
+        $iterator = new DirectoryIterator($parameters->getInputDirectory());
 
         /**
          * @var SplFileInfo $file
@@ -95,8 +108,8 @@ class Convert extends Command
                 continue;
             }
 
-            $inputFile = "{$inputDirectory}{$file->getBasename()}";
-            $outputFile = "{$outputDirectory}{$file->getBasename('.po')}.json";
+            $inputFile = "{$parameters->getInputDirectory()}/{$file->getBasename()}";
+            $outputFile = "{$parameters->getOutputDirectory()}/{$file->getBasename('.po')}.json";
 
             $output->writeln("Converting {$inputFile} -> {$outputFile}");
 
@@ -104,9 +117,22 @@ class Convert extends Command
              * @var Translations $translations
              */
             $translations = Translations::fromPoFile($inputFile);
-            $translations->toJsonDictionaryFile($outputFile);
 
-            //TODO: make payload
+            if ($parameters->isApiFormat()) {
+                $dictionary = $translations->toJsonDictionaryString();
+                $apiDictionary = <<<HEREDOC
+{
+    "data": $dictionary,
+    "meta": {
+        "context": "{$file->getBasename('.po')}",
+        "language": "{$parameters->getLang()}"
+    }
+}
+HEREDOC;
+                file_put_contents($outputFile, $apiDictionary);
+            } else {
+                $translations->toJsonDictionaryFile($outputFile);
+            }
         }
     }
 }
